@@ -1,0 +1,3 @@
+[submodule "tkWindget"]
+	path = tkWindget
+	url = https://github.com/Killberos-Tze/tkWindget.git
