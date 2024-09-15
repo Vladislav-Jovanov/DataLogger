@@ -241,10 +241,10 @@ class Logger(AppFrame):
         
     
     def update_time(self,data_points):
-        if data_points==self.variables["samples"].get():
-            timearray=self.sample_time
-        else:
-            timearray=np.linspace(-(data_points-1)*self.time_between_points,0,data_points)
+        #if data_points==self.variables["samples"].get():
+        timearray=self.sample_time[-(data_points-1):0]
+        #else:
+        #    timearray=np.linspace(-(data_points-1)*self.time_between_points,0,data_points)
         self.datatime=np.append(self.datatime,timearray+time.time()-self.now)
                  
     def update_min_max(self):
@@ -266,9 +266,10 @@ class Logger(AppFrame):
                 self.frameroot.after(int(self.variables["samples"].get()*self.time_between_points*1000*0.7),self.collect_plot)
             #checking of the number of data after initialization
             else:
-                self.sock.send("ABOR\nDATA:POIN?\nFETC?\nINIT\n".encode('utf-8'))
+                self.sock.send("ABOR\nDATA:POIN?\n".encode('utf-8'))
                 data_points=int(self.sock.recv(1024).decode('utf-8'))
-                print(data_points)
+                self.sock.send("FETC?\nINIT\n".encode('utf-8'))
+                #print(data_points)
                 #self.test+=1
                 #if data_points==self.variables["samples"].get():
                 #if self.test==self.sample_points:
@@ -297,11 +298,12 @@ class Logger(AppFrame):
         
 
     def stop_collect_plot(self):
-        self.sock.send("ABOR\nDATA:POIN?\nFETC?\n".encode('utf-8'))
+        self.sock.send("ABOR\nDATA:POIN?\n".encode('utf-8'))
         #self.sock.send("DATA:POIN?\n".encode('utf-8'))
         data_points=int(self.sock.recv(1024).decode('utf-8'))
-        print(data_points)
+        #print(data_points)
         if data_points!=0:
+            self.sock.send("FETC?\n".encode('utf-8'))
             self.update_time(data_points)
             #self.sock.send("FETC?\n".encode('utf-8'))
             self.get_all_data(data_points)      
