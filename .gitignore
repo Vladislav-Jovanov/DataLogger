@@ -1,6 +1,7 @@
 **/__pycache__/
 .instruments
 **/*.ini
+**/*.instr
 **/*.txt
 *.svg
 **/*.png

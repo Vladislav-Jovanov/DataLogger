@@ -5,7 +5,7 @@ Created on Wed Jan 17 23:05:06 2024
 
 @author: tze
 """
-from tkWindget.tkWindget import AppFrame, OnOffButton, FigureFrame, IntEntry, IPEntry
+from tkWindget.tkWindget import AppFrame, OnOffButton, FigureFrame, IPEntry
 from RW_data.RW_files import Files_RW
 from tkinter import Frame, Button, Label, StringVar, IntVar, DoubleVar, OptionMenu, _setit, DISABLED, NORMAL
 import os
@@ -22,20 +22,32 @@ class Logger(AppFrame):
     def __init__(self,**kwargs):
         super().__init__(**kwargs,appgeometry=(900,600,10,10))
         self.init_variables()
-        self.init_frames()
-        self.init_commandframe()
         try:
             tmp=Files_RW().check_IV_measure_ini(self.scriptdir,self.ini_name,Files_RW.split)
             self.savedir=tmp.savedir
         except:
             self.savedir='Documents'
             self.write_to_ini()
-        
+        try:
+            filename=self.ini_name.split('.')[0]+'.instr'
+            self.ipaddr,self.sockport=Files_RW().check_IV_measure_inst_file(self.scriptdir,filename,self.split)    
+        except:
+            self.ipaddr='192.168.1.210'
+            self.sockport=5025
+            self.write_to_instr()
+        self.init_frames()
+        self.init_commandframe()
         
     def write_to_ini(self):
         write=[]
         write.append(f'save_file_path{Files_RW.split}{self.savedir}')
         Files_RW().write_to_file(self.scriptdir,self.ini_name,write)
+    
+    def write_to_instr(self):
+        write=[]
+        write.append(f'ip_address{Files_RW.split}{self.ipaddr}')
+        write.append(f"port{Files_RW.split}{self.sockport}")
+        Files_RW().write_to_file(self.scriptdir,self.ini_name.split('.')[0]+'.instr',write)
         
         
     def init_variables(self):
@@ -48,8 +60,6 @@ class Logger(AppFrame):
                         "integration":DoubleVar(),
                         "type":StringVar(),
                         "samples":IntVar()}
-        self.ipaddr='192.168.1.210'
-        self.sockport=5025
         self.quantities_details={"Voltage":{"name":"VOLT", "DC":[100e-3,1,10,100,1000],"AC":[100e-3,1,10,100,750]},"Current":{"name":"CURR", "DC":[100e-6,1e-3,10e-3,100e-3,1,3], "AC":[100e-6,1e-3,10e-3,100e-3,1,3]}}
         self.quantities=[key for key in self.quantities_details.keys()]
         self.types=["DC","AC"]
@@ -85,7 +95,7 @@ class Logger(AppFrame):
         
     def init_commandframe(self):
         rowcount=1
-        self.command_elements['ip']=IPEntry(parent=self.commandframe)
+        self.command_elements['ip']=IPEntry(parent=self.commandframe,address=f"{self.ipaddr}:{self.sockport}")
         self.command_elements['ip'].grid(row=rowcount,column=1)
         rowcount+=1
         tmpframe=Frame(self.commandframe)
@@ -215,11 +225,14 @@ class Logger(AppFrame):
             self.command_elements['delay'].config(state=DISABLED)
             self.command_elements['samples'].config(state=DISABLED)
             self.sock.send("*RST\n".encode('utf-8'))
+            #CONF:VOLT:DC 10\n
             self.sock.send(f"CONF:{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()} {self.variables['range'].get()}\n".encode('utf-8')) #sets the range
+            #VOLT:NPLC 1\n
             self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()}:NPLC {self.variables['integration'].get()}\n".encode('utf-8')) #sets the aperture and resolution
             self.sock.send(f"SAMP:COUN {self.variables['samples'].get()}\n".encode('utf-8')) #sets number of sample counts
             self.sock.send("TRIG:SOUR IMM\n".encode('utf-8')) #sets trigger source to be INIT command
             self.sock.send(f"TRIG:DEL {self.variables['delay'].get()*self.takt}\n".encode('utf-8'))
+            #VOLT:DC:ZERO:AUTO ON\n
             self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()}:ZERO:AUTO {self.command_elements['zrck'].get_state()}\n".encode('utf-8'))
             
             
