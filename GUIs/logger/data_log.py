@@ -123,8 +123,6 @@ class Logger(AppFrame):
         self.command_elements['type'].grid(row=2,column=3,sticky="W")
         self.command_elements['range']=OptionMenu(tmpframe,self.variables["range"],*self.quantities_details[self.quantities[0]][self.types[0]])
         self.command_elements['range'].grid(row=2,column=2,sticky="W")
-        self.set_defaults()
-        
         
         rowcount+=1
         tmpframe=Frame(self.commandframe)
@@ -140,7 +138,6 @@ class Logger(AppFrame):
         self.command_elements['delay'].grid(row=2,column=1)
         self.command_elements['zrck']=OnOffButton(parent=tmpframe,imagepath=os.path.join(self.scriptdir,'images'),images=[f'zrck_{image}' for image in ['on.png','off.png']])
         self.command_elements['zrck'].grid(row=2,column=2)
-        self.command_elements['zrck'].enable_press()
         self.command_elements['samples']=OptionMenu(tmpframe,self.variables['samples'],*[2,10,50,100,1000,5000])
         self.command_elements['samples'].grid(row=2,column=3)
         
@@ -165,6 +162,7 @@ class Logger(AppFrame):
         self.variables['integration'].set(1)
         self.variables['delay'].set(1)
         self.variables['samples'].set(100)
+        self.disable_settings_elements()
         
     
     def update_range(self,var):
@@ -223,6 +221,8 @@ class Logger(AppFrame):
             tmp=self.sock.recv(1024).decode('utf-8')
             self.instname.set_name(tmp.split(',')[1]+'\n'+tmp.split(',')[2])
             self.command_elements['collect'].enable_press()
+            self.command_elements['ip'].disable()
+            self.enable_settings_elements()
         except:
             self.command_elements['connect'].change_state('off')
             
@@ -231,14 +231,7 @@ class Logger(AppFrame):
             self.init_plot_data()
             self.figure.plot.ax.set_ylabel(f"{self.variables['quantity'].get()} ({self.units[self.variables['quantity'].get()]})")
             self.figure.canvas.draw()
-            self.command_elements['ip'].disable()
-            self.command_elements['zrck'].disable_press()
-            self.command_elements['quantity'].config(state=DISABLED)
-            self.command_elements['type'].config(state=DISABLED)
-            self.command_elements['range'].config(state=DISABLED)
-            self.command_elements['integration'].config(state=DISABLED)
-            self.command_elements['delay'].config(state=DISABLED)
-            self.command_elements['samples'].config(state=DISABLED)
+            self.disable_settings_elements()
             self.sock.send("*RST\n".encode('utf-8'))
             #CONF:VOLT:DC 10\n
             self.sock.send(f"CONF:{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()} {self.variables['range'].get()}\n".encode('utf-8')) #sets the range
@@ -251,15 +244,16 @@ class Logger(AppFrame):
             self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()}:ZERO:AUTO {self.command_elements['zrck'].get_state()}\n".encode('utf-8'))
             
             
+    def disable_settings_elements(self):
+        self.command_elements['zrck'].disable_press()
+        self.command_elements['quantity'].config(state=DISABLED)
+        self.command_elements['type'].config(state=DISABLED)
+        self.command_elements['range'].config(state=DISABLED)
+        self.command_elements['integration'].config(state=DISABLED)
+        self.command_elements['delay'].config(state=DISABLED)
+        self.command_elements['samples'].config(state=DISABLED)
             
-            
-        
-    def disconnect(self):
-        self.instname.clear()
-        self.sock.close()
-        self.command_elements['collect'].change_state('off')
-        self.command_elements['collect'].disable_press()
-        self.command_elements['ip'].enable()
+    def enable_settings_elements(self):
         self.command_elements['zrck'].enable_press()
         self.command_elements['quantity'].config(state=NORMAL)
         self.command_elements['type'].config(state=NORMAL)
@@ -267,6 +261,16 @@ class Logger(AppFrame):
         self.command_elements['integration'].config(state=NORMAL)
         self.command_elements['delay'].config(state=NORMAL)
         self.command_elements['samples'].config(state=NORMAL)
+        
+    def disconnect(self):
+        self.instname.clear()
+        self.sock.close()
+        self.measurement_init=False;
+        self.command_elements['ip'].enable()
+        self.command_elements['collect'].change_state('off')
+        self.command_elements['collect'].disable_press()
+        self.command_elements['zrck'].change_state('off')
+        self.disable_settings_elements()
         
     
     def update_time(self,data_points):
@@ -342,8 +346,9 @@ class Logger(AppFrame):
             self.update_plot()
         self.measurement_init=False;
         self.command_elements['collect'].change_state('off')
-        self.command_elements['collect'].disable_press()
-        self.command_elements['save'].configure(state="active")
+        self.command_elements['save'].configure(state=NORMAL)
+        self.enable_settings_elements()
+        
         
         
     def init_plot_data(self):
@@ -359,7 +364,8 @@ class Logger(AppFrame):
             self.figure.plot.ax.lines[0].set_xdata(self.datatime)
             self.figure.plot.ax.lines[0].set_ydata(self.data)
         self.figure.plot.ax.set_xlim(0,1)
-        self.figure.canvas.draw()  
+        self.figure.canvas.draw()
+        self.command_elements['save'].configure(state=DISABLED)
     
     def update_plot(self):
         if len(self.figure.plot.ax.lines)!=0:
