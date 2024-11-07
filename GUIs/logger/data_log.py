@@ -5,7 +5,7 @@ Created on Wed Jan 17 23:05:06 2024
 
 @author: tze
 """
-from tkWindget.tkWindget import AppFrame, OnOffButton, FigureFrame, IPEntry
+from tkWindget.tkWindget import AppFrame, OnOffButton, FigureFrame, IPEntry, NameLabel
 from RW_data.RW_files import Files_RW
 from tkinter import Frame, Button, Label, StringVar, IntVar, DoubleVar, OptionMenu, _setit, DISABLED, NORMAL
 import os
@@ -94,9 +94,21 @@ class Logger(AppFrame):
         
     def init_commandframe(self):
         rowcount=1
-        self.command_elements['ip']=IPEntry(parent=self.commandframe,address=f"{self.ipaddr}:{self.sockport}")
+        tmpframe=Frame(self.commandframe)
+        tmpframe.grid(row=rowcount,column=1)
+        tmp=OnOffButton(parent=tmpframe,imagepath=os.path.join(self.scriptdir,'images'),images=[f'connect_{image}' for image in ['on.png','off.png']],command=lambda litem='connect': self.press_test(litem))
+        tmp.grid(row=1,column=1)
+        self.command_elements['connect']=tmp
+        self.command_elements['connect'].enable_press()
+        
+        self.command_elements['ip']=IPEntry(parent=tmpframe,address=f"{self.ipaddr}:{self.sockport}")
         #self.command_elements['ip']=IPEntry(parent=self.commandframe)
-        self.command_elements['ip'].grid(row=rowcount,column=1)
+        self.command_elements['ip'].grid(row=rowcount,column=2)
+        
+        rowcount+=1;
+        self.instname=NameLabel(parent=self.commandframe,width=32,height=2)
+        self.instname.grid(row=rowcount,column=1)
+        
         rowcount+=1
         tmpframe=Frame(self.commandframe)
         tmpframe.grid(row=rowcount,column=1)
@@ -129,17 +141,16 @@ class Logger(AppFrame):
         self.command_elements['zrck']=OnOffButton(parent=tmpframe,imagepath=os.path.join(self.scriptdir,'images'),images=[f'zrck_{image}' for image in ['on.png','off.png']])
         self.command_elements['zrck'].grid(row=2,column=2)
         self.command_elements['zrck'].enable_press()
-        self.command_elements['samples']=OptionMenu(tmpframe,self.variables['samples'],*[1,50,100,1000,5000])
+        self.command_elements['samples']=OptionMenu(tmpframe,self.variables['samples'],*[2,10,50,100,1000,5000])
         self.command_elements['samples'].grid(row=2,column=3)
         
         rowcount+=1
         tmpframe=Frame(self.commandframe)
         tmpframe.grid(row=rowcount,column=1)
-        for idx, item in enumerate(self.command_list.keys()):
-            tmp=OnOffButton(parent=tmpframe,imagepath=os.path.join(self.scriptdir,'images'),images=[f'{item}_{image}' for image in ['on.png','off.png']],command=lambda litem=item: self.press_test(litem))
-            tmp.grid(row=1,column=idx)
-            self.command_elements[item]=tmp
-        self.command_elements['connect'].enable_press()
+        tmp=OnOffButton(parent=tmpframe,imagepath=os.path.join(self.scriptdir,'images'),images=[f'collect_{image}' for image in ['on.png','off.png']],command=lambda litem='collect': self.press_test(litem))
+        tmp.grid(row=1,column=1)
+        self.command_elements['collect']=tmp
+        Button(tmpframe,text="Clear plot",command=self.clear_plot_data).grid(row=1,column=2)
         rowcount+=1
         self.command_elements['save']=Button(self.commandframe, text="Save Data", width=12, command=self.save_data)
         self.command_elements['save'].grid(row=rowcount,column=0,columnspan=2)
@@ -208,6 +219,9 @@ class Logger(AppFrame):
         self.update_time_between()
         try:
             self.sock.connect((self.command_elements["ip"].get_address(), self.command_elements["ip"].get_port()))
+            self.sock.send("*IDN?\n".encode('utf-8'))
+            tmp=self.sock.recv(1024).decode('utf-8')
+            self.instname.set_name(tmp.split(',')[1]+'\n'+tmp.split(',')[2])
             
         except:
             self.command_elements['connect'].change_state('off')
@@ -240,6 +254,7 @@ class Logger(AppFrame):
             
         
     def disconnect(self):
+        self.instname.clear()
         self.sock.close()
         self.command_elements['collect'].change_state('off')
         self.command_elements['collect'].disable_press()
@@ -255,7 +270,8 @@ class Logger(AppFrame):
     
     def update_time(self,data_points):
         #if data_points==self.variables["samples"].get():
-        timearray=self.sample_time[-(data_points-1):0]
+        timearray=self.sample_time[len(self.sample_time)-data_points:]
+        
         #else:
         #    timearray=np.linspace(-(data_points-1)*self.time_between_points,0,data_points)
         self.datatime=np.append(self.datatime,timearray+time.time()-self.now)
@@ -282,7 +298,6 @@ class Logger(AppFrame):
                 self.sock.send("ABOR\nDATA:POIN?\n".encode('utf-8'))
                 data_points=int(self.sock.recv(1024).decode('utf-8'))
                 self.sock.send("FETC?\nINIT\n".encode('utf-8'))
-                #print(data_points)
                 #self.test+=1
                 #if data_points==self.variables["samples"].get():
                 #if self.test==self.sample_points:
@@ -330,11 +345,22 @@ class Logger(AppFrame):
         self.command_list["connect"][self.command_elements["connect"].get_state()]()
         self.command_elements['save'].configure(state="active")
         
+        
     def init_plot_data(self):
         self.data=np.array([])
         self.datatime=np.array([]) 
         self.figure.plot.ax.plot(self.datatime,self.data)
-        
+    
+    def clear_plot_data(self):
+        self.now=time.time()
+        self.data=np.array([])
+        self.datatime=np.array([])
+        if len(self.figure.plot.ax.lines)!=0:
+            self.figure.plot.ax.lines[0].set_xdata(self.datatime)
+            self.figure.plot.ax.lines[0].set_ydata(self.data)
+        self.figure.plot.ax.set_xlim(0,1)
+        self.figure.canvas.draw()  
+    
     def update_plot(self):
         if len(self.figure.plot.ax.lines)!=0:
             self.figure.plot.ax.lines[0].set_xdata(self.datatime)
