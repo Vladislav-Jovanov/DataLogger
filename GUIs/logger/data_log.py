@@ -222,12 +222,13 @@ class Logger(AppFrame):
             self.sock.send("*IDN?\n".encode('utf-8'))
             tmp=self.sock.recv(1024).decode('utf-8')
             self.instname.set_name(tmp.split(',')[1]+'\n'+tmp.split(',')[2])
-            
+            self.command_elements['collect'].enable_press()
         except:
             self.command_elements['connect'].change_state('off')
+            
+    def apply_settings(self):
         if self.command_elements["connect"].get_state()=="on":
             self.init_plot_data()
-            self.command_elements['collect'].enable_press()
             self.figure.plot.ax.set_ylabel(f"{self.variables['quantity'].get()} ({self.units[self.variables['quantity'].get()]})")
             self.figure.canvas.draw()
             self.command_elements['ip'].disable()
@@ -289,6 +290,7 @@ class Logger(AppFrame):
         if self.command_elements['collect'].get_state()=="on":
             #initialization of a new measurement
             if not self.measurement_init:
+                self.apply_settings()
                 self.now=time.time()
                 self.sock.send("INIT\n".encode('utf-8')) #old data deleted and new is being stored into reading memory
                 self.measurement_init=True
@@ -341,8 +343,6 @@ class Logger(AppFrame):
         self.measurement_init=False;
         self.command_elements['collect'].change_state('off')
         self.command_elements['collect'].disable_press()
-        self.command_elements['connect'].change_state('off')
-        self.command_list["connect"][self.command_elements["connect"].get_state()]()
         self.command_elements['save'].configure(state="active")
         
         
