@@ -34,7 +34,6 @@ class Logger(AppFrame):
         except:
             self.ipaddr='192.168.1.210'
             self.sockport=5025
-            self.write_to_instr()
         self.init_frames()
         self.init_commandframe()
         
@@ -96,6 +95,7 @@ class Logger(AppFrame):
     def init_commandframe(self):
         rowcount=1
         self.command_elements['ip']=IPEntry(parent=self.commandframe,address=f"{self.ipaddr}:{self.sockport}")
+        #self.command_elements['ip']=IPEntry(parent=self.commandframe)
         self.command_elements['ip'].grid(row=rowcount,column=1)
         rowcount+=1
         tmpframe=Frame(self.commandframe)
