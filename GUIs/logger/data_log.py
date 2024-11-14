@@ -30,7 +30,9 @@ class Logger(AppFrame):
             self.write_to_ini()
         try:
             filename=self.ini_name.split('.')[0]+'.instr'
-            self.ipaddr,self.sockport=Files_RW().check_IV_measure_inst_file(self.scriptdir,filename,self.split)    
+            tmp=Files_RW().check_IV_measure_inst_file(self.scriptdir,filename,':=')    
+            self.ipaddr=tmp[0][0]
+            self.sockport=tmp[1][0]
         except:
             self.ipaddr='192.168.1.210'
             self.sockport=5025
@@ -44,8 +46,8 @@ class Logger(AppFrame):
     
     def write_to_instr(self):
         write=[]
-        write.append(f'ip_address{Files_RW.split}{self.ipaddr}')
-        write.append(f"port{Files_RW.split}{self.sockport}")
+        write.append(f'ip_address{Files_RW.split}{self.command_elements["ip"].get_address()}')
+        write.append(f'port{Files_RW.split}{self.command_elements["ip"].get_port()}')
         Files_RW().write_to_file(self.scriptdir,self.ini_name.split('.')[0]+'.instr',write)
         
         
@@ -138,7 +140,7 @@ class Logger(AppFrame):
         self.command_elements['delay'].grid(row=2,column=1)
         self.command_elements['zrck']=OnOffButton(parent=tmpframe,imagepath=os.path.join(self.scriptdir,'images'),images=[f'zrck_{image}' for image in ['on.png','off.png']])
         self.command_elements['zrck'].grid(row=2,column=2)
-        self.command_elements['samples']=OptionMenu(tmpframe,self.variables['samples'],*[2,10,50,100,1000,5000])
+        self.command_elements['samples']=OptionMenu(tmpframe,self.variables['samples'],*[1,20,50,100,1000,5000])
         self.command_elements['samples'].grid(row=2,column=3)
         
         rowcount+=1
@@ -223,8 +225,10 @@ class Logger(AppFrame):
             self.command_elements['collect'].enable_press()
             self.command_elements['ip'].disable()
             self.enable_settings_elements()
+            self.write_to_instr()
         except:
             self.command_elements['connect'].change_state('off')
+        
             
     def apply_settings(self):
         if self.command_elements["connect"].get_state()=="on":
@@ -301,30 +305,24 @@ class Logger(AppFrame):
                 self.frameroot.after(int(self.variables["samples"].get()*self.time_between_points*1000*0.7),self.collect_plot)
             #checking of the number of data after initialization
             else:
-                self.sock.send("ABOR\nDATA:POIN?\n".encode('utf-8'))
+                self.sock.send("DATA:POIN?\n".encode('utf-8'))
                 data_points=int(self.sock.recv(1024).decode('utf-8'))
-                self.sock.send("FETC?\nINIT\n".encode('utf-8'))
-                #self.test+=1
-                #if data_points==self.variables["samples"].get():
-                #if self.test==self.sample_points:
-                self.update_time(data_points)
-                    #self.sock.send("FETC?\nINIT\n".encode('utf-8'))
-                    #self.sock.send("INIT\n".encode('utf-8')) #old data deleted and new is being stored into readingmemory    
-                self.get_all_data(data_points)
-                self.update_min_max()
-                self.data=np.append(self.data,self.new_data)
-                self.update_plot()
+                if data_points!=0:
+                    if data_points<self.variables['samples'].get():
+                        self.sock.send("ABORT\nDATA:POIN?\n".encode('utf-8'))
+                        data_points=int(self.sock.recv(1024).decode('utf-8'))
+                        
+                    self.sock.send("FETC?\nINIT\n".encode('utf-8'))
+                    self.update_time(data_points)
+                    self.get_all_data(data_points)
+                    self.update_min_max()
+                    self.data=np.append(self.data,self.new_data)
+                    self.update_plot()
                 self.frameroot.after(int(self.variables['samples'].get()*self.time_between_points*1000*0.7),self.collect_plot)
-                #    return
-                #elif data_points>self.variables["samples"].get()-3:
-                #    self.frameroot.after(int(self.time_between_points*1000/4),self.collect_plot)
-                #else:
-                #    self.frameroot.after(int(self.time_between_points*1000),self.collect_plot)
-                    #print(time.time(),"out if")
-      
+                
     
     def get_all_data(self,data_points):
-        data=''
+        data=''        
         while len(data.strip().split(','))!=data_points or data=='':
             data=data+self.sock.recv(2048).decode('utf-8')
         self.new_data=np.array(data.strip().split(',')).astype(float)
