@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=false
+Name[en_US]=IV_measurement
+Exec=bash /home/path_to_folder/IV_measurement/IV.sh
+Icon=python
+Icon[en_US]=python
+Name=IV_measurement

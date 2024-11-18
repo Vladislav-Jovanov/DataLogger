@@ -3,6 +3,7 @@
 **/*.ini
 **/*.instr
 **/*.txt
-*.svg
+**/*.svg
+**/*.iv
 **/*.png
 **/*.log
