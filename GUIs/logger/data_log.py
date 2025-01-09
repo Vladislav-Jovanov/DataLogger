@@ -67,7 +67,7 @@ class Logger(AppFrame):
         self.xname="Time"
         self.units={"Voltage":"V","Current":"A","Time":"s"}
         self.takt=1/50;
-        self.now=0;
+        self.starttime=0;
         #self.test=0
         self.measurement_init=False
         self.command_list={'connect':{'on':self.connect,'off':self.disconnect},'collect':{'on':self.collect_plot,'off':self.stop_collect_plot}}
@@ -229,23 +229,43 @@ class Logger(AppFrame):
         except:
             self.command_elements['connect'].change_state('off')
         
-            
-    def apply_settings(self):
-        if self.command_elements["connect"].get_state()=="on":
-            self.init_plot_data()
-            self.figure.plot.ax.set_ylabel(f"{self.variables['quantity'].get()} ({self.units[self.variables['quantity'].get()]})")
-            self.figure.canvas.draw()
-            self.disable_settings_elements()
-            self.sock.send("*RST\n".encode('utf-8'))
+    def apply_settings_agilent(self):
             #CONF:VOLT:DC 10\n
             self.sock.send(f"CONF:{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()} {self.variables['range'].get()}\n".encode('utf-8')) #sets the range
             #VOLT:NPLC 1\n
             self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()}:NPLC {self.variables['integration'].get()}\n".encode('utf-8')) #sets the aperture and resolution
             self.sock.send(f"SAMP:COUN {self.variables['samples'].get()}\n".encode('utf-8')) #sets number of sample counts
+            #self.sock.send(f"COUN {self.variables['samples'].get()}\n".encode('utf-8'))
             self.sock.send("TRIG:SOUR IMM\n".encode('utf-8')) #sets trigger source to be INIT command
             self.sock.send(f"TRIG:DEL {self.variables['delay'].get()*self.takt}\n".encode('utf-8'))
             #VOLT:DC:ZERO:AUTO ON\n
             self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()}:ZERO:AUTO {self.command_elements['zrck'].get_state()}\n".encode('utf-8'))
+            
+    def apply_settings_tek(self):
+        #VOLT:APER 0.2
+        self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:APER {self.takt*self.variables['integration'].get()}\n".encode())
+        #VOLT:AZERO 0
+        self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:AZERO {self.variables['range'].get()}\n".encode())
+        #VOLT:DC:RANGE 10
+        self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()}:RANGE {self.variables['range'].get()}\n".encode('utf-8'))
+        self.sock.send("TRIG:LOAD 'EMPTY'\n".encode())
+        self.sock.send("TRIG:BLOC:BUFF:CLEAR 1, 'defbuffer1'\n".encode())
+        self.sock.send(f"TRIG:BLOC:DEL:CONS 2, {self.variables['delay'].get()*self.takt}\n".encode())
+        self.sock.send("TRIG:BLOC:MDIG 3, 'defbuffer1'\n".encode())
+        self.sock.send(f"TRIG:BLOC:BRAN:COUN 4, {self.variables['samples'].get()}, 2\n".encode())
+        
+    def apply_settings(self):
+        if self.command_elements["connect"].get_state()=="on":
+            self.init_plot_data()
+            #fix it once you fix figures
+            self.figure.plot.ax.set_ylabel(f"{self.variables['quantity'].get()} ({self.units[self.variables['quantity'].get()]})")
+            self.figure.canvas.draw()
+            self.disable_settings_elements()
+            self.sock.send("*RST\n".encode('utf-8'))
+            if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+                self.apply_settings_tek()
+            else:
+                self.apply_settings_agilent()
             
             
     def disable_settings_elements(self):
@@ -275,15 +295,6 @@ class Logger(AppFrame):
         self.command_elements['collect'].disable_press()
         self.command_elements['zrck'].change_state('off')
         self.disable_settings_elements()
-        
-    
-    def update_time(self,data_points):
-        #if data_points==self.variables["samples"].get():
-        timearray=self.sample_time[len(self.sample_time)-data_points:]
-        
-        #else:
-        #    timearray=np.linspace(-(data_points-1)*self.time_between_points,0,data_points)
-        self.datatime=np.append(self.datatime,timearray+time.time()-self.now)
                  
     def update_min_max(self):
         if np.shape(self.data)==np.shape(np.array([])):
@@ -299,46 +310,83 @@ class Logger(AppFrame):
             #initialization of a new measurement
             if not self.measurement_init:
                 self.apply_settings()
-                self.now=time.time()
-                self.sock.send("INIT\n".encode('utf-8')) #old data deleted and new is being stored into reading memory
+                self.starttime=time.time()
+                self.sock.send("INIT\n".encode()) #old data deleted and new is being stored into reading memory
                 self.measurement_init=True
                 self.frameroot.after(int(self.variables["samples"].get()*self.time_between_points*1000*0.7),self.collect_plot)
             #checking of the number of data after initialization
             else:
-                self.sock.send("DATA:POIN?\n".encode('utf-8'))
-                data_points=int(self.sock.recv(1024).decode('utf-8'))
+                #ask for data points
+                if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+                    self.sock.send("TRAC:ACT? 'defbuffer1'\n".encode())
+                else:
+                    self.sock.send("DATA:POIN?\n".encode())
+                
+                data_points=int(self.sock.recv(1024).decode())
                 if data_points!=0:
                     if data_points<self.variables['samples'].get():
-                        self.sock.send("ABORT\nDATA:POIN?\n".encode('utf-8'))
-                        data_points=int(self.sock.recv(1024).decode('utf-8'))
+                        if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+                            self.sock.send("ABORT\nTRAC:ACT? 'defbuffer1'\n".encode())
+                        else:
+                            self.sock.send("ABORT\nDATA:POIN?\n".encode())
                         
-                    self.sock.send("FETC?\nINIT\n".encode('utf-8'))
-                    self.update_time(data_points)
-                    self.get_all_data(data_points)
+                        data_points=int(self.sock.recv(1024).decode())
+                        
+                    if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+                        self.sock.send(f"TRAC:DATA? 1, {data_points}, 'defbuffer1', REL, READ\nINIT\n".encode())
+                        self.get_all_data_tek(data_points)
+                    else:
+                        self.sock.send("FETC?\nINIT\n".encode())
+                        self.get_all_data_agilent(data_points)
+                    
                     self.update_min_max()
                     self.data=np.append(self.data,self.new_data)
                     self.update_plot()
                 self.frameroot.after(int(self.variables['samples'].get()*self.time_between_points*1000*0.7),self.collect_plot)
                 
+    def get_all_data_tek(self,data_points):
+        data=''        
+        while len(data.strip().split(','))!=2*data_points or data=='':
+            data=data+self.sock.recv(2048).decode()
+        new_data=data.strip().split(',')
+        data=[]
+        times=[]
+        for idx,item in enumerate(new_data):
+            if idx % 2:
+                data.append(item)
+            else:
+                times.append(item)
+        self.new_data=np.array(data).astype('float')
+        timearray=np.array(times).astype('float')
+        timearray=timearray-timearray[-1]
+        self.datatime=np.append(self.datatime,timearray+time.time()-self.starttime)
+        self.datatime=np.array(times).astype('float')
     
-    def get_all_data(self,data_points):
+    
+    def get_all_data_agilent(self,data_points):
         data=''        
         while len(data.strip().split(','))!=data_points or data=='':
             data=data+self.sock.recv(2048).decode('utf-8')
         self.new_data=np.array(data.strip().split(',')).astype(float)
+        timearray=self.sample_time[len(self.sample_time)-data_points:]
+        self.datatime=np.append(self.datatime,timearray+time.time()-self.starttime)
         
         
 
     def stop_collect_plot(self):
-        self.sock.send("ABOR\nDATA:POIN?\n".encode('utf-8'))
-        #self.sock.send("DATA:POIN?\n".encode('utf-8'))
-        data_points=int(self.sock.recv(1024).decode('utf-8'))
+        if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+            self.sock.send("ABORT\nTRAC:ACT? 'defbuffer1'\n".encode())
+        else:
+            self.sock.send("ABORT\nDATA:POIN?\n".encode())
+        data_points=int(self.sock.recv(1024).decode())
         #print(data_points)
         if data_points!=0:
-            self.sock.send("FETC?\n".encode('utf-8'))
-            self.update_time(data_points)
-            #self.sock.send("FETC?\n".encode('utf-8'))
-            self.get_all_data(data_points)      
+            if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+                self.sock.send(f"TRAC:DATA? 1, {data_points}, 'defbuffer1', REL, READ\n".encode())
+                self.get_all_data_tek(data_points)
+            else:
+                self.sock.send("FETC?\n".encode())
+                self.get_all_data_agilent(data_points)      
             self.update_min_max()
             self.data=np.append(self.data,self.new_data)
             self.update_plot()
@@ -355,7 +403,7 @@ class Logger(AppFrame):
         self.figure.plot.ax.plot(self.datatime,self.data)
     
     def clear_plot_data(self):
-        self.now=time.time()
+        self.starttime=time.time()
         self.data=np.array([])
         self.datatime=np.array([])
         if len(self.figure.plot.ax.lines)!=0:
