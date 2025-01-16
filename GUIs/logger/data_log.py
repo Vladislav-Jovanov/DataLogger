@@ -216,7 +216,6 @@ class Logger(AppFrame):
     
     def connect(self):
         self.sock=socket.socket()
-        self.update_time_between()
         try:
             self.sock.connect((self.command_elements["ip"].get_address(), self.command_elements["ip"].get_port()))
             self.sock.send("*IDN?\n".encode('utf-8'))
@@ -256,6 +255,7 @@ class Logger(AppFrame):
         
     def apply_settings(self):
         if self.command_elements["connect"].get_state()=="on":
+            self.update_time_between()
             self.init_plot_data()
             #fix it once you fix figures
             self.figure.plot.ax.set_ylabel(f"{self.variables['quantity'].get()} ({self.units[self.variables['quantity'].get()]})")
