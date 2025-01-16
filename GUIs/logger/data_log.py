@@ -360,7 +360,6 @@ class Logger(AppFrame):
         timearray=np.array(times).astype('float')
         timearray=timearray-timearray[-1]
         self.datatime=np.append(self.datatime,timearray+time.time()-self.starttime)
-        self.datatime=np.array(times).astype('float')
     
     
     def get_all_data_agilent(self,data_points):
