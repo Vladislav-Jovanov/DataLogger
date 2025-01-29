@@ -297,9 +297,11 @@ class Logger(AppFrame):
         self.disable_settings_elements()
                  
     def update_min_max(self):
-        if np.shape(self.data)==np.shape(np.array([])):
+        #for the first run
+        if np.shape(self.data)==np.shape(self.new_data):
             self.datamin=min(0.98*np.min(self.new_data),1.02*np.min(self.new_data))
             self.datamax=max(0.98*np.max(self.new_data),1.02*np.max(self.new_data))
+        #for every other
         else:
             self.datamin=min(self.datamin,0.98*np.min(self.new_data),1.02*np.min(self.new_data))
             self.datamax=max(self.datamax,0.98*np.max(self.new_data),1.02*np.max(self.new_data))
