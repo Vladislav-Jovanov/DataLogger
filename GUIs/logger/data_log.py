@@ -298,11 +298,11 @@ class Logger(AppFrame):
                  
     def update_min_max(self):
         if np.shape(self.data)==np.shape(np.array([])):
-            self.datamin=np.min(self.new_data)
-            self.datamax=np.max(self.new_data)+1e-6
+            self.datamin=min(0.98*np.min(self.new_data),1.02*np.min(self.new_data))
+            self.datamax=max(0.98*np.max(self.new_data),1.02*np.max(self.new_data))
         else:
-            self.datamin=min(self.datamin,np.min(self.new_data))
-            self.datamax=max(self.datamax,np.max(self.new_data))
+            self.datamin=min(self.datamin,0.98*np.min(self.new_data),1.02*np.min(self.new_data))
+            self.datamax=max(self.datamax,0.98*np.max(self.new_data),1.02*np.max(self.new_data))
             
     
     def collect_plot(self):
@@ -339,7 +339,6 @@ class Logger(AppFrame):
                         self.sock.send("FETC?\nINIT\n".encode())
                         self.get_all_data_agilent(data_points)
                     
-                    self.update_min_max()
                     self.data=np.append(self.data,self.new_data)
                     self.update_plot()
                 self.frameroot.after(int(self.variables['samples'].get()*self.time_between_points*1000*0.7),self.collect_plot)
@@ -386,7 +385,6 @@ class Logger(AppFrame):
             else:
                 self.sock.send("FETC?\n".encode())
                 self.get_all_data_agilent(data_points)      
-            self.update_min_max()
             self.data=np.append(self.data,self.new_data)
             self.update_plot()
         self.measurement_init=False;
@@ -417,7 +415,7 @@ class Logger(AppFrame):
             self.figure.plot.ax.lines[0].set_xdata(self.datatime)
             self.figure.plot.ax.lines[0].set_ydata(self.data)
         
-        
+        self.update_min_max()
         self.figure.plot.ax.set_ylim(self.datamin,self.datamax)
         self.figure.plot.ax.set_xlim(0,self.datatime[-1])
         self.figure.canvas.draw()    
