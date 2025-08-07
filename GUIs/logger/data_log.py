@@ -5,7 +5,7 @@ Created on Wed Jan 17 23:05:06 2024
 
 @author: tze
 """
-from tkWindget.tkWindget import AppFrame, OnOffButton, FigureFrame, IPEntry, NameLabel
+from tkWindget.tkWindget import AppFrame, OnOffButton, FigureFrame, IPEntry, LabelFrame
 from RW_data.RW_files import Files_RW
 from tkinter import Frame, Button, Label, StringVar, IntVar, DoubleVar, OptionMenu, _setit, DISABLED, NORMAL
 import os
@@ -108,7 +108,7 @@ class Logger(AppFrame):
         self.command_elements['ip'].grid(row=rowcount,column=2)
         
         rowcount+=1;
-        self.instname=NameLabel(parent=self.commandframe,width=32,height=2)
+        self.instname=LabelFrame(parent=self.commandframe,width=32,height=2)
         self.instname.grid(row=rowcount,column=1)
         
         rowcount+=1
@@ -220,7 +220,7 @@ class Logger(AppFrame):
             self.sock.connect((self.command_elements["ip"].get_address(), self.command_elements["ip"].get_port()))
             self.sock.send("*IDN?\n".encode('utf-8'))
             tmp=self.sock.recv(1024).decode('utf-8')
-            self.instname.set_name(tmp.split(',')[1]+'\n'+tmp.split(',')[2])
+            self.instname.set_var(tmp.split(',')[1]+'\n'+tmp.split(',')[2])
             self.command_elements['collect'].enable_press()
             self.command_elements['ip'].disable()
             self.enable_settings_elements()
@@ -262,7 +262,7 @@ class Logger(AppFrame):
             self.figure.canvas.draw()
             self.disable_settings_elements()
             self.sock.send("*RST\n".encode('utf-8'))
-            if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+            if "MODEL DAQ6510\n04480963"==self.instname.get_var():
                 self.apply_settings_tek()
             else:
                 self.apply_settings_agilent()
@@ -319,22 +319,23 @@ class Logger(AppFrame):
             #checking of the number of data after initialization
             else:
                 #ask for data points
-                if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+                if "MODEL DAQ6510\n04480963"==self.instname.get_var():
                     self.sock.send("TRAC:ACT? 'defbuffer1'\n".encode())
                 else:
                     self.sock.send("DATA:POIN?\n".encode())
                 
                 data_points=int(self.sock.recv(1024).decode())
                 if data_points!=0:
+                    #abort measurement and get data points
                     if data_points<self.variables['samples'].get():
-                        if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+                        if "MODEL DAQ6510\n04480963"==self.instname.get_var():
                             self.sock.send("ABORT\nTRAC:ACT? 'defbuffer1'\n".encode())
                         else:
                             self.sock.send("ABORT\nDATA:POIN?\n".encode())
                         
                         data_points=int(self.sock.recv(1024).decode())
                         
-                    if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+                    if "MODEL DAQ6510\n04480963"==self.instname.get_var():
                         self.sock.send(f"TRAC:DATA? 1, {data_points}, 'defbuffer1', REL, READ\nINIT\n".encode())
                         self.get_all_data_tek(data_points)
                     else:
@@ -374,14 +375,14 @@ class Logger(AppFrame):
         
 
     def stop_collect_plot(self):
-        if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+        if "MODEL DAQ6510\n04480963"==self.instname.get_var():
             self.sock.send("ABORT\nTRAC:ACT? 'defbuffer1'\n".encode())
         else:
             self.sock.send("ABORT\nDATA:POIN?\n".encode())
         data_points=int(self.sock.recv(1024).decode())
         #print(data_points)
         if data_points!=0:
-            if "MODEL DAQ6510\n04480963"==self.instname.get_name():
+            if "MODEL DAQ6510\n04480963"==self.instname.get_var():
                 self.sock.send(f"TRAC:DATA? 1, {data_points}, 'defbuffer1', REL, READ\n".encode())
                 self.get_all_data_tek(data_points)
             else:

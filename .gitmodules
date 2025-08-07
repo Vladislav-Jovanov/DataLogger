@@ -7,3 +7,6 @@
 [submodule "AppHub"]
 	path = AppHub
 	url = https://github.com/Killberos-Tze/AppHub.git
+[submodule "Figures"]
+	path = Figures
+	url = https://github.com/Killberos-Tze/Figures.git
