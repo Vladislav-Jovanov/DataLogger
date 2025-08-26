@@ -20,7 +20,7 @@ import socket
 
 class Logger(AppFrame):
     def __init__(self,**kwargs):
-        super().__init__(**kwargs,appgeometry=(900,600,10,10))
+        super().__init__(**kwargs,file=__file__,appgeometry=(900,600,10,10))
         self.init_variables()
         try:
             tmp=Files_RW().check_IV_measure_ini(self.scriptdir,self.ini_name,Files_RW.split)
