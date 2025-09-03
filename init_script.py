@@ -8,7 +8,7 @@ Created on Wed Sep  3 09:28:41 2025
 
 import os
 
-dirname=os.path.dirname(__file__)
+dirname=os.path.dirname(os.path.abspath(__file__))
 os.chdir(dirname)
 os.system('git submodule update --init --recursive --remote')
 for item in ['tkWindget', 'RW_data', 'AppHub', 'DataProcess', 'Figures']:
