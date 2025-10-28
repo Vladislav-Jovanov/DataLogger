@@ -5,7 +5,7 @@ Created on Wed Jan 17 23:05:06 2024
 
 @author: tze
 """
-from tkWindget.tkWindget import AppFrame, OnOffButton, FigureFrame, IPEntry, LabelFrame, SaveSingleFile
+from tkWindget.tkWindget import AppFrame, OnOffButton, FigureFrame, IPEntry, LabelFrame, SaveSingleFile, StringEntry
 from RW_data.RW_files import Read_from, Write_to, Help
 from tkinter import Frame, Button, Label, StringVar, IntVar, DoubleVar, OptionMenu, _setit, DISABLED, NORMAL
 from os import path
@@ -13,7 +13,7 @@ import time
 from numpy import newaxis, linspace, append, array
 from Figures.Figures import FigureXY2
 import socket
-
+from datetime import datetime
 
 #two approached to test either with prolonged time after you get hit, or with whilelooping
 
@@ -131,12 +131,18 @@ class Logger(AppFrame):
         self.command_elements['collect']=tmp
         Button(tmpframe,text="Clear plot",command=self.clear_plot_data).grid(row=1,column=2)
         rowcount+=1
-        self.command_elements['save']=SaveSingleFile(parent=self.commandframe,ini=self.ini, write_ini=self.write_ini, text='Save Data', filetypes=[(("log data file","*.log") )],write=self.save_data)
-        self.command_elements['save'].add_filename('Time_log')
-        #self.command_elements['save']=Button(self.commandframe, text="Save Data", width=12, command=self.save_data)
-        self.command_elements['save'].grid(row=rowcount,column=0,columnspan=2)
-        #self.command_elements['save'].config(state="disabled")
+        tmpframe=Frame(self.commandframe)
+        tmpframe.grid(row=rowcount,column=1)
+        self.samplename=StringEntry(parent=tmpframe,command=self.sample_name)
+        self.samplename.set_var('Provide sample name')
+        self.samplename.grid(row=rowcount,column=0)
+        self.command_elements['save']=SaveSingleFile(parent=tmpframe,ini=self.ini, write_ini=self.write_ini, text='Save Data', filetypes=[(("log data file","*.log") )],write=self.save_data,datetime=True)
+        self.command_elements['save'].grid(row=rowcount,column=2)
+        self.command_elements['save'].config(state="disabled")
         self.set_defaults()
+
+    def sample_name(self):
+        self.command_elements['save'].add_filename(self.samplename.get_var().replace(' ','_'))
 
     def set_defaults(self):
         self.variables['quantity'].set(self.quantities[0])
@@ -176,23 +182,42 @@ class Logger(AppFrame):
         data['#data_summary']=Help.generate_data_dict(mask=['x1','y1'],quantities=['time', self.variables['quantity'].get()],units=['s',self.variables['unit'].get()])
         data['#data_summary']['y1_label']=path.basename(filename.split('.')[0])
         Write_to.data(filename,data)
+        self.samplename.set_var('Provide sample name')
 
 
     def connect(self):
         self.sock=socket.socket()
-        self.devices["#device_1"]["ip_address"]=self.command_elements["ip"].get_address()
-        self.devices["#device_1"]["port"]=self.command_elements["ip"].get_port()
-        self.devices["#device_1"]["device_name"]=self.instname.get_var()
-        Write_to.ini_inst_proj(self.file,self.devices,extension='instr')
         try:
             self.sock.connect((self.command_elements["ip"].get_address(), self.command_elements["ip"].get_port()))
             self.sock.send("*IDN?\n".encode('utf-8'))
             tmp=self.sock.recv(1024).decode('utf-8')
-            self.devices["#device_1"]["ip_address"]=self.command_elements["ip"].get_address()
-            self.devices["#device_1"]["port"]=self.command_elements["ip"].get_port()
-            self.devices["#device_1"]["device_name"]=tmp
-            Write_to.ini_inst_proj(self.file,self.devices,extension='instr')
-            self.instname.set_var(tmp.split(',')[1]+'\n'+tmp.split(',')[2])
+            tmp=tmp.strip()
+            device_found=False                
+            for kword in self.devices.keys():
+                if kword.startswith('#device'):
+                    if self.devices[kword]['device_name']==tmp:
+                        device_found=True
+                        if self.devices[kword]["ip_address"]!=self.command_elements["ip"].get_address() or self.devices[kword]["port"]!=self.command_elements["ip"].get_port():
+                            self.devices[kword]["ip_address"]=self.command_elements["ip"].get_address()
+                            self.devices[kword]["port"]=self.command_elements["ip"].get_port()
+                            Write_to.ini_inst_proj(self.file,self.devices,extension='instr')
+            if not device_found:
+                for kword in self.devices.keys():
+                    if kword.startswith('#device'):
+                        if self.devices[kword]['device_name']=='':
+                            self.devices[kword]["ip_address"]=self.command_elements["ip"].get_address()
+                            self.devices[kword]["port"]=self.command_elements["ip"].get_port()
+                            self.devices[kword]['device_name']=tmp
+                            device_found=True
+                            Write_to.ini_inst_proj(self.file,self.devices,extension='instr')
+            if not device_found:    
+                self.devices['no_devices']+=1
+                self.devices[f"#device_{self.devices['no_devices']}"]={}
+                self.devices[f"#device_{self.devices['no_devices']}"]["ip_address"]=self.command_elements["ip"].get_address()
+                self.devices[f"#device_{self.devices['no_devices']}"]["port"]=self.command_elements["ip"].get_port()
+                self.devices[f"#device_{self.devices['no_devices']}"]["device_name"]=tmp
+                Write_to.ini_inst_proj(self.file,self.devices,extension='instr')
+            self.instname.set_var(tmp.split(',')[0]+' '+tmp.split(',')[1]+'\n'+tmp.split(',')[2])
             self.command_elements['collect'].enable_press()
             self.command_elements['ip'].disable()
             self.enable_settings_elements()
@@ -281,7 +306,7 @@ class Logger(AppFrame):
                     self.sock.send("TRAC:ACT? 'defbuffer1'\n".encode())
                 else:
                     self.sock.send("DATA:POIN?\n".encode())
-                
+
                 data_points=int(self.sock.recv(1024).decode())
                 if data_points!=0:
                     #abort measurement and get data points
@@ -290,20 +315,20 @@ class Logger(AppFrame):
                             self.sock.send("ABORT\nTRAC:ACT? 'defbuffer1'\n".encode())
                         else:
                             self.sock.send("ABORT\nDATA:POIN?\n".encode())
-                        
+
                         data_points=int(self.sock.recv(1024).decode())
-                        
+
                     if "MODEL DAQ6510\n04480963"==self.instname.get_var():
                         self.sock.send(f"TRAC:DATA? 1, {data_points}, 'defbuffer1', REL, READ\nINIT\n".encode())
                         self.get_all_data_tek(data_points)
                     else:
                         self.sock.send("FETC?\nINIT\n".encode())
                         self.get_all_data_agilent(data_points)
-                    
+
                     self.data=append(self.data,self.new_data)
                     self.figure.plot.plot_data(self.datatime,self.data)
                 self.frameroot.after(int(self.variables['samples'].get()*self.time_between_points*1000*0.7),self.collect_plot)
-                
+
     def get_all_data_tek(self,data_points):
         data=''        
         while len(data.strip().split(','))!=2*data_points or data=='':
@@ -346,6 +371,8 @@ class Logger(AppFrame):
             self.data=append(self.data,self.new_data)
             self.figure.plot.plot_data(self.datatime,self.data)
         self.measurement_init=False;
+        self.command_elements['save'].add_datetime(datetime.now().strftime("%Y%M%D_%H%M%S_"))
+        self.sample_name()
         self.command_elements['collect'].change_state('off')
         self.command_elements['save'].config(state=NORMAL)
         self.enable_settings_elements()
