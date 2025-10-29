@@ -53,9 +53,6 @@ class Logger(AppFrame):
         self.devices["#device_1"]["ip_address"]='192.168.1.210'
         self.devices["#device_1"]["port"]=5025
         self.devices["#device_1"]["device_name"]=''
-        #this is temp
-        self.datatime=array([])
-        self.data=array([])
 
     def update_time_between(self):
         if self.command_elements["zrck"].get_state()=="on":    
@@ -180,7 +177,23 @@ class Logger(AppFrame):
         data={}
         data['#data_table']=append(self.datatime[:,newaxis],self.data[:,newaxis],axis=1)
         data['#data_summary']=Help.generate_data_dict(mask=['x1','y1'],quantities=['time', self.variables['quantity'].get()],units=['s',self.variables['unit'].get()])
-        data['#data_summary']['y1_label']=path.basename(filename.split('.')[0])
+        data['#data_summary']['y1_label']=self.samplename.get_var()
+        data['#setup']={}
+        data['#setup']['date']=datetime.now().strftime("%Y%m%d")
+        data['#setup']['start_time']=self.measure_start
+        data['#setup']['end_time']=self.measure_end
+        data['#setup']['quantity']=self.variables['quantity'].get()
+        data['#setup']['unit']=self.variables['unit'].get()
+        data['#setup']['range']=self.variables['range'].get()
+        data['#setup']['type']=self.variables['type'].get()
+        data['#setup']['integration']=self.variables['integration'].get()
+        data['#setup']['delay']=self.variables['delay'].get()
+        data['#setup']['autozero']=self.command_elements['zrck'].get_state()
+        data['#setup']['no_samples']=self.variables['samples'].get()
+        self.sock.send("*IDN?\n".encode('utf-8'))
+        tmp=self.sock.recv(1024).decode('utf-8')
+        tmp=tmp.strip()
+        data['#setup']['device']=tmp
         Write_to.data(filename,data)
         self.samplename.set_var('Provide sample name')
 
@@ -240,7 +253,12 @@ class Logger(AppFrame):
         #VOLT:APER 0.2
         self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:APER {self.takt*self.variables['integration'].get()}\n".encode())
         #VOLT:AZERO 0
-        self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:AZERO {self.variables['range'].get()}\n".encode())
+        azero=self.command_elements['zrck'].get_state()
+        if azero=='on':
+            a_zero=1
+        if azero=='off':    
+            a_zero=0
+        self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:AZERO {a_zero}\n".encode())
         #VOLT:DC:RANGE 10
         self.sock.send(f"{self.quantities_details[self.variables['quantity'].get()]['name']}:{self.variables['type'].get()}:RANGE {self.variables['range'].get()}\n".encode('utf-8'))
         self.sock.send("TRIG:LOAD 'EMPTY'\n".encode())
@@ -251,12 +269,9 @@ class Logger(AppFrame):
 
     def apply_settings(self):
         if self.command_elements["connect"].get_state()=="on":
-            self.update_time_between()
-            self.init_plot_data()
-            #fix it once you fix figures
-            self.figure.plot.update_labels(y=f"{self.variables['quantity'].get()} ({self.units[self.variables['quantity'].get()]})")
             self.disable_settings_elements()
             self.sock.send("*RST\n".encode('utf-8'))
+            self.update_time_between()
             if "MODEL DAQ6510\n04480963"==self.instname.get_var():
                 self.apply_settings_tek()
             else:
@@ -295,12 +310,15 @@ class Logger(AppFrame):
             #initialization of a new measurement
             if not self.measurement_init:
                 self.apply_settings()
-                self.starttime=time.time()
                 self.sock.send("INIT\n".encode()) #old data deleted and new is being stored into reading memory
                 self.measurement_init=True
+                self.init_plot_data()
                 self.frameroot.after(int(self.variables["samples"].get()*self.time_between_points*1000*0.7),self.collect_plot)
             #checking of the number of data after initialization
             else:
+                #to avoid negative times this is used only by clear_plot case
+                self.chunck_start=time.time()
+                self.chunck_time=datetime.now().strftime("%H:%M:%S")
                 #ask for data points
                 if "MODEL DAQ6510\n04480963"==self.instname.get_var():
                     self.sock.send("TRAC:ACT? 'defbuffer1'\n".encode())
@@ -371,7 +389,8 @@ class Logger(AppFrame):
             self.data=append(self.data,self.new_data)
             self.figure.plot.plot_data(self.datatime,self.data)
         self.measurement_init=False;
-        self.command_elements['save'].add_datetime(datetime.now().strftime("%Y%M%D_%H%M%S_"))
+        self.measure_end=datetime.now().strftime("%H:%M:%S")
+        self.command_elements['save'].add_datetime(datetime.now().strftime("%Y%m%d_%H%M%S_"))
         self.sample_name()
         self.command_elements['collect'].change_state('off')
         self.command_elements['save'].config(state=NORMAL)
@@ -381,8 +400,14 @@ class Logger(AppFrame):
         self.data=array([])
         self.datatime=array([])
         self.figure.plot.plot_data(self.datatime,self.data)
+        self.figure.plot.update_labels(y1=f"{self.variables['quantity'].get()} ({self.units[self.variables['quantity'].get()]})")
+        self.measure_start=datetime.now().strftime("%H:%M:%S")
+        self.starttime=time.time()
+        
 
     def clear_plot_data(self):
-        self.starttime=time.time()
-        self.init_plot_data()
         self.command_elements['save'].config(state=DISABLED)
+        self.data=array([])
+        self.datatime=array([])
+        self.measure_start=self.chunck_time
+        self.starttime=self.chunck_start
