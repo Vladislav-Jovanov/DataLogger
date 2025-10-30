@@ -10,7 +10,7 @@ from RW_data.RW_files import Read_from, Write_to, Help
 from tkinter import Frame, Button, Label, StringVar, IntVar, DoubleVar, OptionMenu, _setit, DISABLED, NORMAL
 from os import path
 import time
-from numpy import newaxis, linspace, append, array
+from numpy import newaxis, linspace, append, array, shape
 from Figures.Figures import FigureXY2
 import socket
 from datetime import datetime
@@ -178,6 +178,7 @@ class Logger(AppFrame):
         data['#data_table']=append(self.datatime[:,newaxis],self.data[:,newaxis],axis=1)
         data['#data_summary']=Help.generate_data_dict(mask=['x1','y1'],quantities=['time', self.variables['quantity'].get()],units=['s',self.variables['unit'].get()])
         data['#data_summary']['y1_label']=self.samplename.get_var()
+        data['#data_summary']['tot_col'],data['#data_summary']['tot_row']=shape(data['#data_table'])
         data['#setup']={}
         data['#setup']['date']=datetime.now().strftime("%Y%m%d")
         data['#setup']['start_time']=self.measure_start
