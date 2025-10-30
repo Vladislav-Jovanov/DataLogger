@@ -312,8 +312,10 @@ class Logger(AppFrame):
             if not self.measurement_init:
                 self.apply_settings()
                 self.sock.send("INIT\n".encode()) #old data deleted and new is being stored into reading memory
-                self.measurement_init=True
                 self.init_plot_data()
+                self.measurement_init=True
+                self.measure_start=datetime.now().strftime("%H:%M:%S")
+                self.starttime=time.time()
                 self.frameroot.after(int(self.variables["samples"].get()*self.time_between_points*1000*0.7),self.collect_plot)
             #checking of the number of data after initialization
             else:
@@ -402,13 +404,9 @@ class Logger(AppFrame):
         self.datatime=array([])
         self.figure.plot.plot_data(self.datatime,self.data)
         self.figure.plot.update_labels(y1=f"{self.variables['quantity'].get()} ({self.units[self.variables['quantity'].get()]})")
-        self.measure_start=datetime.now().strftime("%H:%M:%S")
-        self.starttime=time.time()
-        
 
     def clear_plot_data(self):
         self.command_elements['save'].config(state=DISABLED)
-        self.data=array([])
-        self.datatime=array([])
+        self.init_plot_data()
         self.measure_start=self.chunck_time
         self.starttime=self.chunck_start
