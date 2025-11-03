@@ -15,7 +15,7 @@ class Plotter(AppFrame):
     def __init__(self,**kwargs):
         super().__init__(**kwargs,file=__file__,appgeometry=(900, 550, 25, 25))
         self._init_frames()
-        self.multiple_load=LoadMultipleFiles(parent=self.controlframe, ini=self.ini,write_ini=self.write_ini,read=self.read_data,filetypes=[('log file','*.log'),('IV file','*.iv')])
+        self.multiple_load=LoadMultipleFiles(parent=self.controlframe, ini=self.ini,write_ini=self.write_ini,read=self.read_data,filetypes=[('IHTM log','*.log'),('IHTM IV','*.iv')])
         self.multiple_load.add_action(self.plot_stuff)
         self.multiple_load.grid(row=0,column=0)
         
@@ -26,8 +26,8 @@ class Plotter(AppFrame):
         self.figframe=FigureFrame(parent=self.frameroot,figclass=FigureXY2,figkwargs={'figsize':(15/2.54,8/2.54),'axsize':[2/15,3/15,7/15,5/8]})
         self.figframe.grid(column=1,row=0)
         
-    def read_data(self,filename):
-        if filename.split('.')[-1]=='log' or filename.split('.')[-1]=='iv':
+    def read_data(self,filename,filetype):
+        if 'IHTM' in filetype:
             tmp=Read_from.ihtm(filename)
         return tmp
     
