@@ -9,13 +9,14 @@ from tkinter import Frame
 from tkWindget.tkWindget import AppFrame,FigureFrame,LoadMultipleFiles
 from Figures.Figures import FigureXY2
 from RW_data.RW_files import Read_from
+from common.filetypes import load_types
 
 
 class Plotter(AppFrame):
     def __init__(self,**kwargs):
         super().__init__(**kwargs,file=__file__,appgeometry=(900, 550, 25, 25))
         self._init_frames()
-        self.multiple_load=LoadMultipleFiles(parent=self.controlframe, ini=self.ini,write_ini=self.write_ini,read=self.read_data,filetypes=[('IHTM log','*.log'),('IHTM IV','*.iv')])
+        self.multiple_load=LoadMultipleFiles(parent=self.controlframe, ini=self.ini,write_ini=self.write_ini,read=self.read_data,filetypes=load_types)
         self.multiple_load.add_action(self.plot_stuff)
         self.multiple_load.grid(row=0,column=0)
         

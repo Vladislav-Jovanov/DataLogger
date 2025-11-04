@@ -14,6 +14,7 @@ from numpy import newaxis, linspace, append, array, shape
 from Figures.Figures import FigureXY2
 import socket
 from datetime import datetime
+from common.filetypes import log_type
 
 #two approached to test either with prolonged time after you get hit, or with whilelooping
 
@@ -133,7 +134,7 @@ class Logger(AppFrame):
         self.samplename=StringEntry(parent=tmpframe,command=self.sample_name)
         self.samplename.set_var('Provide sample name')
         self.samplename.grid(row=rowcount,column=0)
-        self.command_elements['save']=SaveSingleFile(parent=tmpframe,ini=self.ini, write_ini=self.write_ini, text='Save Data', filetypes=[(("log data file","*.log") )],write=self.save_data,datetime=True)
+        self.command_elements['save']=SaveSingleFile(parent=tmpframe,ini=self.ini, write_ini=self.write_ini, text='Save Data', filetypes=log_type,write=self.save_data,datetime=True)
         self.command_elements['save'].grid(row=rowcount,column=2)
         self.command_elements['save'].config(state="disabled")
         self.set_defaults()
