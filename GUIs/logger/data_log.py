@@ -348,7 +348,7 @@ class Logger(AppFrame):
                         self.get_all_data_agilent(data_points)
 
                     self.data=append(self.data,self.new_data)
-                    self.figure.plot.plot_data(self.datatime,self.data)
+                    self.figure.plot.plot_data(self.datatime,self.data,zeros=[True,False,False])
                 self.frameroot.after(int(self.variables['samples'].get()*self.time_between_points*1000*0.7),self.collect_plot)
 
     def get_all_data_tek(self,data_points):
@@ -391,7 +391,7 @@ class Logger(AppFrame):
                 self.sock.send("FETC?\n".encode())
                 self.get_all_data_agilent(data_points)      
             self.data=append(self.data,self.new_data)
-            self.figure.plot.plot_data(self.datatime,self.data)
+            self.figure.plot.plot_data(self.datatime,self.data,zeros=[True,False,False])
         self.measurement_init=False;
         self.measure_end=datetime.now().strftime("%H:%M:%S")
         self.command_elements['save'].add_datetime(datetime.now().strftime("%Y%m%d_%H%M%S_"))
@@ -403,7 +403,7 @@ class Logger(AppFrame):
     def init_plot_data(self):
         self.data=array([])
         self.datatime=array([])
-        self.figure.plot.plot_data(self.datatime,self.data)
+        self.figure.plot.plot_data(self.datatime,self.data,zeros=[True,False,False])
         self.figure.plot.update_labels(y1=f"{self.variables['quantity'].get()} ({self.units[self.variables['quantity'].get()]})")
 
     def clear_plot_data(self):
