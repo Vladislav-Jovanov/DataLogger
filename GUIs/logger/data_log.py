@@ -179,7 +179,7 @@ class Logger(AppFrame):
         data['#data_table']=append(self.datatime[:,newaxis],self.data[:,newaxis],axis=1)
         data['#data_summary']=Help.generate_data_dict(mask=['x1','y1'],quantities=['time', self.variables['quantity'].get()],units=['s',self.variables['unit'].get()])
         data['#data_summary']['y1_label']=self.samplename.get_var()
-        data['#data_summary']['tot_col'],data['#data_summary']['tot_row']=shape(data['#data_table'])
+        data['#data_summary']['tot_row'],data['#data_summary']['tot_col']=shape(data['#data_table'])
         data['#setup']={}
         data['#setup']['date']=datetime.now().strftime("%Y%m%d")
         data['#setup']['start_time']=self.measure_start
