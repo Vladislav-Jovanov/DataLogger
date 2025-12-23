@@ -16,7 +16,7 @@ import socket
 from datetime import datetime
 from common.filetypes import log_type
 
-#two approached to test either with prolonged time after you get hit, or with whilelooping
+#two approaches to test either with prolonged time after you get hit, or with whilelooping
 
 class Logger(AppFrame):
     def __init__(self,**kwargs):
