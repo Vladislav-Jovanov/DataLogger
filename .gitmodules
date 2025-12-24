@@ -1,12 +1,3 @@
-[submodule "tkWindget"]
-	path = tkWindget
-	url = https://github.com/Killberos-Tze/tkWindget.git
-[submodule "RW_data"]
-	path = RW_data
-	url = https://github.com/Killberos-Tze/RW_data.git
-[submodule "AppHub"]
-	path = AppHub
-	url = https://github.com/Killberos-Tze/AppHub.git
-[submodule "Figures"]
-	path = Figures
-	url = https://github.com/Killberos-Tze/Figures.git
+[submodule "submodules"]
+	path = submodules
+	url = https://github.com/Killberos-Tze/submodules.git

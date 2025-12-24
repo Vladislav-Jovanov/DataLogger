@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from AppHub.Hub import MultipleApps
+from submodules.Hub import MultipleApps
 
 from GUIs.logger.data_log import Logger
 from GUIs.plotter.plot_data import Plotter

@@ -6,9 +6,9 @@ Created on Fri Aug 22 21:40:59 2025
 @author: tze
 """
 from tkinter import Frame
-from tkWindget.tkWindget import AppFrame,FigureFrame,LoadMultipleFiles
-from Figures.Figures import FigureXY2
-from RW_data.RW_files import Read_from
+from submodules.tkWindget import AppFrame,FigureFrame,LoadMultipleFiles
+from submodules.Figures import FigureXY2
+from submodules.RW_files import Read_from
 from common.filetypes import load_types
 
 

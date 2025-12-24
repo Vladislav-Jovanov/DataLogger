@@ -5,13 +5,13 @@ Created on Wed Jan 17 23:05:06 2024
 
 @author: tze
 """
-from tkWindget.tkWindget import AppFrame, OnOffButton, FigureFrame, IPEntry, LabelFrame, SaveSingleFile, StringEntry
-from RW_data.RW_files import Read_from, Write_to, Help
+from submodules.tkWindget import AppFrame, OnOffButton, FigureFrame, IPEntry, LabelFrame, SaveSingleFile, StringEntry
+from submodules.RW_files import Read_from, Write_to, Help
 from tkinter import Frame, Button, Label, StringVar, IntVar, DoubleVar, OptionMenu, _setit, DISABLED, NORMAL
 from os import path
 import time
 from numpy import newaxis, linspace, append, array, shape
-from Figures.Figures import FigureXY2
+from submodules.Figures import FigureXY2
 import socket
 from datetime import datetime
 from common.filetypes import log_type
